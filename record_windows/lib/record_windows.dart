@@ -21,6 +21,9 @@ class RecordWindows extends RecordPlatform {
   String? _path;
   StreamController<RecordState>? _stateStreamCtrl;
 
+  // Current max peak
+  double _maxPeak = -160.0;
+
   @override
   Future<void> dispose() {
     _stateStreamCtrl?.close();
@@ -30,7 +33,7 @@ class RecordWindows extends RecordPlatform {
 
   @override
   Future<Amplitude> getAmplitude() {
-    return Future.value(Amplitude(current: -160.0, max: -160.0));
+    return Future.value(Amplitude(current: _maxPeak, max: _maxPeak));
   }
 
   @override
@@ -115,6 +118,7 @@ class RecordWindows extends RecordPlatform {
         '--channels=$numChannels',
         '--globcmd=listen',
         '--gain=6.0',
+        '--debug', // For getting the amplitude
         if (device != null) '--dev-capture=${device.id}',
         ..._getEncoderSettings(encoder, bitRate),
       ],
@@ -122,7 +126,7 @@ class RecordWindows extends RecordPlatform {
         _path = path;
         _updateState(RecordState.record);
       },
-      consumeOutput: false,
+      consumeOutput: true, // For getting the amplitude
     );
   }
 
@@ -241,7 +245,22 @@ class RecordWindows extends RecordPlatform {
     // Listen to both stdout & stderr to not leak system resources.
     if (consumeOutput) {
       final out = outStreamCtrl ?? StreamController<List<int>>();
-      if (outStreamCtrl == null) out.stream.listen((event) {});
+      if (outStreamCtrl == null) {
+
+        // Here we can listen to the output of the debug mode
+        // It returns lots of data, including the max peak amplitude (this is a little hacky ik, but it works, better than nothing)
+        out.stream.listen((message) {
+
+          // Get the max peak amplitude
+          final args = utf8.decode(message).split(" ");
+
+          String? peak = args.firstWhere((element) => element.contains("maxpeak"), orElse: () => "");
+          if (peak != "") {
+            _maxPeak = double.tryParse(peak.split(":")[2].split("\n")[0]) ?? -160.0;
+          }
+
+        });
+      }
       final err = StreamController<List<int>>();
       err.stream.listen((event) {});
 
