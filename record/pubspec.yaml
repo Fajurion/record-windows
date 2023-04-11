@@ -1,7 +1,8 @@
 name: record
-description: Audio recorder from microphone to a given file path with multiple codecs, bit rate and sampling rate options.
-version: 4.4.4
+description: record package modified by the Fajurion team.
+version: 4.4.5
 homepage: https://github.com/llfbandit/record/tree/master/record
+publish_to: 'none' # I haven't read about this yet, but in case the owner of record sees this, just use your own files.
 
 environment:
   sdk: ">=2.15.1 <3.0.0"
@@ -12,22 +13,14 @@ dependencies:
     sdk: flutter
 
   record_platform_interface: ^0.5.0
-  record_web: '>=0.5.0 < 2.0.0'
-  record_windows: '>=0.7.1 < 2.0.0'
-  record_macos: '>=0.2.2 < 2.0.0'
-  record_linux: '>=0.4.1 < 2.0.0'
-
-# dependency_overrides:
-#   record_platform_interface:
-#     path: ../record_platform_interface
-#   record_web:
-#     path: ../record_web
-#   record_windows:
-#     path: ../record_windows
-#   record_macos:
-#     path: ../record_macos
-#   record_linux:
-#     path: ../record_linux
+  record_web:
+    path: ../record_web
+  record_windows:
+    path: ../record_windows
+  record_macos:
+    path: ../record_macos
+  record_linux:
+    path: ../record_linux
 
 dev_dependencies:
   # https://pub.dev/packages/flutter_lints

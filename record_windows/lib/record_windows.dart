@@ -21,6 +21,9 @@ class RecordWindows extends RecordPlatform {
   String? _path;
   StreamController<RecordState>? _stateStreamCtrl;
 
+  // Stream subscription for the fmedia process output
+  StreamSubscription<String>? _outStreamSub;
+
   // Current max peak
   double _maxPeak = -160.0;
 
@@ -33,7 +36,7 @@ class RecordWindows extends RecordPlatform {
 
   @override
   Future<Amplitude> getAmplitude() {
-    return Future.value(Amplitude(current: _maxPeak, max: _maxPeak));
+    return Future.value(Amplitude(current: 0, max: _maxPeak));
   }
 
   @override
@@ -108,6 +111,23 @@ class RecordWindows extends RecordPlatform {
     final file = File(path);
     if (file.existsSync()) await file.delete();
 
+    final outStreamCtrl = StreamController<List<int>>();
+
+    // Here we can listen to the output of the debug mode
+    // It returns lots of data, including the max peak amplitude (this is a little hacky ik, but it works, better than nothing)
+    _outStreamSub = outStreamCtrl.stream
+      .transform(utf8.decoder)
+      .listen((message) {
+
+        // Get the max peak amplitude
+        final args = message.split(" ");
+
+        String? peak = args.firstWhere((element) => element.contains("maxpeak"), orElse: () => "");
+        if (peak != "") {
+          _maxPeak = double.tryParse(peak.split(":")[2].split("\n")[0]) ?? -160.0;
+        }
+      });
+
     await _callFMedia(
       [
         '--notui',
@@ -126,6 +146,7 @@ class RecordWindows extends RecordPlatform {
         _path = path;
         _updateState(RecordState.record);
       },
+      outStreamCtrl: outStreamCtrl,
       consumeOutput: true, // For getting the amplitude
     );
   }
@@ -138,6 +159,9 @@ class RecordWindows extends RecordPlatform {
     await _callFMedia(['--globcmd=quit']);
 
     _updateState(RecordState.stop);
+
+    // Stop listening
+    _outStreamSub?.cancel();
 
     return path;
   }
@@ -242,25 +266,12 @@ class RecordWindows extends RecordPlatform {
       onStarted();
     }
 
+    _maxPeak = -159.0;
+
     // Listen to both stdout & stderr to not leak system resources.
     if (consumeOutput) {
       final out = outStreamCtrl ?? StreamController<List<int>>();
-      if (outStreamCtrl == null) {
-
-        // Here we can listen to the output of the debug mode
-        // It returns lots of data, including the max peak amplitude (this is a little hacky ik, but it works, better than nothing)
-        out.stream.listen((message) {
-
-          // Get the max peak amplitude
-          final args = utf8.decode(message).split(" ");
-
-          String? peak = args.firstWhere((element) => element.contains("maxpeak"), orElse: () => "");
-          if (peak != "") {
-            _maxPeak = double.tryParse(peak.split(":")[2].split("\n")[0]) ?? -160.0;
-          }
-
-        });
-      }
+      if (outStreamCtrl == null) out.stream.listen((event) {});
       final err = StreamController<List<int>>();
       err.stream.listen((event) {});
 

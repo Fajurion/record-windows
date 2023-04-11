@@ -15,8 +15,8 @@ dependencies:
   path: ^1.8.0
 
 # dependency_overrides:
-#   record_platform_interface:
-#     path: ../record_platform_interface
+  # record_platform_interface:
+    # path: ../record_platform_interface
 
 dev_dependencies:
   flutter_test:
